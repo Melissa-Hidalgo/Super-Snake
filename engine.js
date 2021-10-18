@@ -12,6 +12,13 @@ let cirY = 1;
 var message;
 var laVenenosa;
 var t1;
+var timeBox;
+var scoreBox;
+var vitamina;
+
+var today = new Date();
+var clock = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+
 
 //used to monitor wheter paddles and ball are
 // moving and in what direction
@@ -48,9 +55,41 @@ laVenenosa = new Snake( innerWidth/2, innerHeight/2, 0,'green');
 laVenenosa.grow(20);
 laVenenosa.draw();
 
+timeBox = new MessangeBox (innerWidth - 130, 20, 65, 32, 'yellow', 'black', "15px Courier", clock);
+timeBox.draw();
 
+vitamina = new Vitamin(100, 100,'orange');
+vitamina.draw();
 
+scoreBox = new MessangeBox(innerWidth/2, 150, 80, 35, 'black', 'yellow', '10px Courier', "0");
+scoreBox.draw();
 }
+class Vitamin{
+
+
+    constructor(x, y, color){
+
+        this.x = x;
+        this.y = y;
+
+        this.color = color;
+
+    }
+    draw(){
+
+        ctx.save();
+
+        // creating circles
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+
+        ctx.restore();
+    }
+}      
+
 class Tile{
 
     constructor(x, y, color, decoration){
@@ -68,6 +107,8 @@ class Tile{
     }
         draw(){
 
+            ctx.save();
+
            //creating rectangle
             ctx.beginPath();
             ctx.rect(this.x, this.y, 20, 20);
@@ -79,6 +120,8 @@ class Tile{
             ctx.textAlign = "center";
             ctx.fillStyle = "black";
             ctx.fillText(this.decoration, this.x + 10, this.y + 17);
+
+            ctx.restore();
 
         }
         update(posX, posY){
@@ -109,6 +152,8 @@ class Snake {
 
     draw(){
 
+        ctx.save();
+
         // Snake's head
         ctx.rect(this.x, this.y, 20, 20);
         ctx.stroke()
@@ -118,6 +163,8 @@ class Snake {
             const element = this.body[index];
             element.draw();   
         }
+        ctx.restore();
+
     }
     update(posX, posY){
         this.x += posX;
@@ -141,26 +188,43 @@ class Snake {
 }
 class MessangeBox {
 
-    constructor(x, y, color, message){
+    constructor(x, y, wWith, wHeight, bgColor, foreColor, font, message){
 
         this.x = x;
         this.y = y;
-        this.color = color;
+
+        this.wWith = wWith;
+        this.wHeight = wHeight;
+
+        this.bgColor = bgColor;
+        this.foreColor = foreColor;
+        this.font = font;
+
         this.message = message;
-    }
+
+        let messaPosX = x+50;
+        let messaPosY = y+100;
+
+    }   
     draw(){
             
-        // /creating rectangle
-            ctx.beginPath();
-            ctx.rect(this.x, this.y, 300, 300);
-            ctx.stroke();
-            ctx.fillStyle = this.color;
-            ctx.fill();
+        ctx.save();
 
-            ctx.font="20px Arial";
-            ctx.textAlign = "center";
-            ctx.fillStyle = this.color;
-            ctx.fillText(this.message, this.x + 10, this.y + 17);
+        // creating rectangle
+        ctx.beginPath();
+        ctx.rect(this.x, this.y, this.wWith , this.wHeight);
+        ctx.stroke();
+        ctx.fillStyle = this.bgColor;
+        ctx.fill();
+
+        ctx.font =  this.font;
+        ctx.textAlign = "center";
+        ctx.fillStyle = this.foreColor;
+
+        ctx.fillText(this.message, this.x + (this.wWith*0.5), this.y + (this.wHeight*0.7));
+
+        ctx.restore();
+
     }
 }
 
@@ -175,11 +239,8 @@ function gameLoop() {
 
     } else {
         
-        message = new MessangeBox(innerWidth/2, innerHeight/2, 'black', 'Game Over!');
+        message = new MessangeBox(innerWidth/4, innerHeight/4, 300, 150, 'red', 'black','40px Courier', 'Game Over!');
         message.draw();
-
-
-         
     
         // // Finish the game
         cancelAnimationFrame(AnimationId)
@@ -196,7 +257,9 @@ function paint(){
     // {
             // Clear the canvas
             ctx.clearRect(0,0, canvas.width, canvas.height);
-            laVenenosa.draw()
+            laVenenosa.draw();
+            timeBox.draw();
+            vitamina.draw();
           
             // // Draw canvas background
             // ctx.fillStyle = 'rgb(0, 0, 0, 0.3)';
@@ -293,4 +356,3 @@ function generateRandomColor()
     return randomColor;
     //random color will be freshly served
 }
-s
