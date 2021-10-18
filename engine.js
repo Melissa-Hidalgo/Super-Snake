@@ -15,6 +15,8 @@ var t1;
 var timeBox;
 var scoreBox;
 var vitamina;
+var dashboard;
+var gameTitle;
 
 var today = new Date();
 var clock = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
@@ -51,18 +53,26 @@ document.addEventListener('keydown', MovePlayerPaddle);
 gameOver = false;
 // console.log("yo termine SetupCanvas");
 
+
+dashboard = new MessangeBox(0, 0, innerWidth, 70, 'Pink', 'black', '40px Courier', "");
+dashboard.draw();
+
 laVenenosa = new Snake( innerWidth/2, innerHeight/2, 0,'green');
 laVenenosa.grow(20);
 laVenenosa.draw();
 
-timeBox = new MessangeBox (innerWidth - 130, 20, 65, 32, 'yellow', 'black', "15px Courier", clock);
+timeBox = new MessangeBox (innerWidth - 130, 28, 80, 32, 'white', 'black', "15px Courier", clock);
 timeBox.draw();
 
 vitamina = new Vitamin(100, 100,'orange');
 vitamina.draw();
 
-scoreBox = new MessangeBox(innerWidth/2, 150, 80, 35, 'black', 'yellow', '10px Courier', "0");
+scoreBox = new MessangeBox(innerWidth/2, 25, 170, 35, 'white', 'black', '35px Courier', "Score: 0");
 scoreBox.draw();
+
+gameTitle = new MessangeBox(10, 20, 150, 40, 'white', 'black', '40px Courier', "Snake");
+gameTitle.draw(); 
+
 }
 class Vitamin{
 
