@@ -5,7 +5,7 @@ body {
 }
 /* # is used to target ids in HTML */
 canvas {
-    background: rgb(88, 95, 88);
+    background: url('./asset/Stones.png');
     /* margin-left: 30px;
        margin-top: 30px; */
 }
