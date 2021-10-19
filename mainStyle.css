@@ -1,6 +1,8 @@
 body {
     text-align: center;
     background: rgb(253, 250, 250);
+    
+    overflow: hidden;
     margin: 0;
 }
 /* # is used to target ids in HTML */

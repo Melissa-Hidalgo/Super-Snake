@@ -1,25 +1,35 @@
 // Call for our function to execute when page is loaded
 document.addEventListener('DOMContentLoaded', SetupCanvas);
-let gameOver = false;
+
+// For testing 
+let steppedGame = true;
 
 let running = false;
+let gameOver = false;
+let gamePaused = false;
+
+let score = 0
+let dashboardHeight = 40;
 let AnimationId;
 
-let cirSpeed = 5;
+let cirSpeed = 0.000001;
 let cirX = 1;
 let cirY = 1;
 
-var message;
-var laVenenosa;
-var t1;
-var timeBox;
-var scoreBox;
-var vitamina;
-var dashboard;
-var gameTitle;
+// let message;
+let oMessageBox;
+let oSnake;
+let t1;
+let oTimeBox;
+let oScoreBox;
+let oVitamin;
+let oDashboard;
+let oGameTitle;
 
-var today = new Date();
-var clock = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+let particles = []
+
+let today = new Date();
+let clock = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
 
 
 //used to monitor wheter paddles and ball are
@@ -33,7 +43,6 @@ let DIRECTION = {
     RIGHT:4
 };
 
-
 function SetupCanvas() {
 
 // Reference to the canvas element
@@ -43,35 +52,28 @@ canvas = document.querySelector("canvas");
 // working with Canvas
 ctx = canvas.getContext('2d');
 
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+canvas.width =  800             //Math.floor(innerWidth * 0.50);
+canvas.height = 550           //Math.floor(innerHeight * 0.70);
 
 document.addEventListener('keydown', MovePlayerPaddle);
 
-// trigger Animation
-//AnimationId = requestAnimationFrame(gameLoop);
-gameOver = false;
-// console.log("yo termine SetupCanvas");
 
+oSnake = new Snake( canvas.width/2, canvas.height/2, 0, 'white');
+oSnake.grow(1);
 
-dashboard = new MessangeBox(0, 0, innerWidth, 70, 'Pink', 'black', '40px Courier', "");
-dashboard.draw();
+oDashboard = new MessageBox(0, 0, canvas.width, 70, 'orange', 'black', '', "");
 
-laVenenosa = new Snake( innerWidth/2, innerHeight/2, 0,'green');
-laVenenosa.grow(20);
-laVenenosa.draw();
+oTimeBox = new MessageBox (canvas.width - 130, 28, 80, 32, 'white', 'black', "15px Courier", clock);
+oTimeBox.draw();
 
-timeBox = new MessangeBox (innerWidth - 130, 28, 80, 32, 'white', 'black', "15px Courier", clock);
-timeBox.draw();
+oVitamin = new Vitamin(0,0);
+oVitamin.move();
 
-vitamina = new Vitamin(100, 100,'orange');
-vitamina.draw();
+oScoreBox = new MessageBox(canvas.width/2, 15, 160, 40, 'white', 'black', '20px Courier', "Score: 0");
+oTimeBox = new MessageBox (canvas.width - 130, 15, 100, 40, 'white', 'black', "15px Courier", clock);
+oGameTitle = new MessageBox(10, 20, 150, 40, 'white', 'black', '40px Courier', "Snake");
 
-scoreBox = new MessangeBox(innerWidth/2, 25, 170, 35, 'white', 'black', '35px Courier', "Score: 0");
-scoreBox.draw();
-
-gameTitle = new MessangeBox(10, 20, 150, 40, 'white', 'black', '40px Courier', "Snake");
-gameTitle.draw(); 
+draw();
 
 }
 class Vitamin{
@@ -87,116 +89,249 @@ class Vitamin{
     }
     draw(){
 
+            // particles
+            particles.forEach((particle, particleIndex) => {
+
+                if(particle.alpha <=0){
+                    // after alpha hit < 0 the particle reappears on the screen.
+                    //let's make sure that does not happen
+                    particles.splice(particleIndex, 1);
+                } else {
+                    
+                    particle.update();
+                    particle.draw();
+                }
+            })
+            
+        // creating rectangle
         ctx.save();
-
-        // creating circles
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = 'white';// TODO: make it transparent
+        ctx.fillRect(this.x, this.y, 20, 20);
         ctx.fill();
-
         ctx.restore();
+        
+        drawApple(this.x, this.y);
+  
     }
+    move(){
+
+        this.x = Math.floor(Math.random() * canvas.width-40);
+        this.y = Math.floor(Math.random() * canvas.height-40);
+
+        // ensure to discount the dashboard space
+        if(this.y < 70) this.y = 80
+        // console.log("vitamin moved to x: " this.x + "y: " + this.y)
+    }
+
+
+
 }      
+class Tile {
 
-class Tile{
+    constructor(x, y, velocity, color, letter, previousX, previousY){
 
-    constructor(x, y, color, decoration){
+        this.color = color;
 
+        // position on canvas
         this.x = x;
         this.y = y;
-        this.color  = color;
-        this.decoration = decoration;
-        this.previousX = 0;
-        this.previousY = 0;
-     
-       
-        // Defines how quickly paddles can be moved
-        this.Velocity = 5;
+
+        this.prevX = previousX;
+        this.prevY = previousY;
+
+        this.width = 20;
+        this.height = 20;
+
+        this.velocity = velocity;
+
+        // Defines movement direction of snake
+        this.move = DIRECTION.STOPPED;
+
+        this.letter = letter;
+
+        this.snapped = false;
     }
-        draw(){
+    draw(){
 
-            ctx.save();
+        ctx.save();
+        ctx.beginPath();
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fill();
 
-           //creating rectangle
-            ctx.beginPath();
-            ctx.rect(this.x, this.y, 20, 20);
-            ctx.stroke();
-            ctx.fillStyle = this.color;
-            ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,255)';
+        ctx.font = "10pt sans-serif";
+        ctx.strokeText(this.letter, this.x+3, this.y+15);
+        ctx.restore();
+    }
+    update(posX, posY){
 
-            ctx.font="20px Arial";
-            ctx.textAlign = "center";
-            ctx.fillStyle = "black";
-            ctx.fillText(this.decoration, this.x + 10, this.y + 17);
+        // console.log("Tile.update.enter-> " + this.prevX  + ", " + this.prevY + " / " + (this.x) + ", " + (this.y) + " / " + (posX) + ", " + (posY));
 
-            ctx.restore();
+        // save my current postion & velocity
+        this.prevX = this.x;
+        this.prevY = this.y;
 
-        }
-        update(posX, posY){
-
-        }
-        move(posX, posY){
-
-        }
-
+        // set my new postion
+        this.x = posX;
+        this.y = posY;
+    }
 }
 class Snake {
 
-    constructor(x, y, tamano, color){
 
-        this.color  = color;
-    
+    constructor(x, y, color){
+
+        this.color = color;
+        
         this.x = x;
         this.y = y;
 
-        //Defines movement direction of paddles
+        this.width = 20;
+        this.height = 20;
+
+        this.prevX = x-20;
+        this.prevY = y;
+
+        // defines movement direction of paddles
         this.move = DIRECTION.STOPPED;
 
-        // Defines how quickly paddles can be moved
-        this.Velocity = 5;
+        // defines how quickly tiles can be moved
+        this.velocity = 20;
+        this.cuerpo = [];
 
-        this.body = [];
+        this.length = 0;
+
+       // save head's positon for next tile
+       let tilePosX = this.prevX;
+       let tilePosY = this.prevY;
+
+
+        // console.log("Snake.constructor.1");
+        // console.log(this.snappedTiles)
     }
-
     draw(){
 
         ctx.save();
 
-        // Snake's head
-        ctx.rect(this.x, this.y, 20, 20);
-        ctx.stroke()
+        // draw head
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
 
-        //Draw the snake's body
-        for (let index = 0; index < this.body.length; index++) {
-            const element = this.body[index];
-            element.draw();   
+        // draw ojo
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(this.x+12, this.y+5, 2, 0, Math.PI*2, false);
+        ctx.fillStyle = 'Yellow';
+        ctx.fill();
+        ctx.strokeStyle = "black"
+        ctx.stroke();
+        ctx.closePath();
+        ctx.restore();
+
+
+        // console.log("contruct.draw.1");
+        // console.log(this.snappedTiles)
+
+        // draw individual tiles into body
+        for (let index = 0; index < this.cuerpo.length; index++) {
+            const currentTile = this.cuerpo[index];
+            currentTile.draw();
         }
         ctx.restore();
 
+        // console.log("contructdraw.2");
+        // console.log(this.snappedTiles)
     }
-    update(posX, posY){
-        this.x += posX;
-        this.y += posY;
-    }
-    move(posX, posY){
-        this.x += posX;
-        this.y += posY;
-    }
-    grow(numeroDeTiles){
+    update(){
 
-        var PosX = this.x + 20;
+        // console.log("SetPreviousPos.enter");
 
-        for (let index = 0; index < numeroDeTiles; index++) {
-            PosX -= 23;
-            var t1 = new Tile(PosX, this.y, generateRandomColor(), index);
-            this.body.push(t1);
+        // save previous position
+        this.prevX = this.x;
+        this.prevY = this.y;
+
+        // here it is where my next tile should be
+        switch (this.move) {
+            case DIRECTION.DOWN:
+                this.y += this.velocity;
+                break;
+            case DIRECTION.UP:
+                this.y -= this.velocity;
+                break;        
+            case DIRECTION.RIGHT:
+                this.x += this.velocity;
+                break;     
+            case DIRECTION.LEFT:
+                this.x -= this.velocity;
+                break;
         }
-      
+        // console.log("update.updatePrevious.1");
+        // console.log(this.snappedTiles)i
+        
+        // console.log("Snake Postions -> x: " + this.x + " y: " + this.y);
+        // console.log("Snake Prev Postions -> x: " + this.prevX + " y: " + this.prevY);
+
+
+        // save head's positon for next tile
+        let tilePosX = this.prevX;
+        let tilePosY = this.prevY;
+
+        // draw individual tiles into body
+        for (let index = 0; index < this.cuerpo.length; index++) {
+
+            // console.log("Set tile new Postions to -> x: " + tilePosX + " y: " + tilePosY);
+            
+            const currentTile = this.cuerpo[index];
+            currentTile.update(tilePosX, tilePosY);
+
+            // set the positon for the next tile
+            // console.log("Save tile prev Pos for next tile's new Pos -> x: " + currentTile.prevX + " y: " + currentTile.prevY);
+            tilePosX = currentTile.prevX;
+            tilePosY = currentTile.prevY;
+
+        }
+        // console.log("update.updatePrevious.2");
+        // console.log(this.snappedTiles)
+    }
+    grow(numberOfTiles){
+
+        let tilePosX = 0;
+        let tilePosY = 0;   
+
+        // if only head, follow it
+        // console.log(this.snappedTiles);
+
+        if (this.cuerpo.length == 0){
+            tilePosX = this.prevX;
+            tilePosY = this.prevY; 
+            // console.log("follow head at: " + tilePosX + ", " + tilePosY);   
+        } else {
+            // if not, follow tail
+            let tile = this.cuerpo[this.cuerpo.length-1];
+            if (tile != undefined){
+                tilePosX = tile.prevX;
+                tilePosY = tile.prevY;      
+                // console.log("follow tile at: " + tilePosX + ", " + tilePosY);   
+            }
+        }
+
+        //console.log("grow h(x.y): " + this.x + ", " + this.y);
+        //console.log("grow Prev(Posx.Posy): " + tilePosX + ", " + tilePosY);
+
+        // adding default tiles to initial body
+        for (let index = 0; index < numberOfTiles; index++) {
+            // console.log("tile: " + index); 
+            this.length +=1;
+            this.cuerpo.push(new Tile(tilePosX, tilePosY, this.velocity, "pink", this.length, tilePosX-20, tilePosY))
+            tilePosX -= 20; // TODO: Check if whether of not the head should always grow to the right???
+            //tilePosY -= tilePosY;    // Y does not change for the initial setup       
+        }
+
     }
 }
-class MessangeBox {
+class MessageBox {
 
     constructor(x, y, wWith, wHeight, bgColor, foreColor, font, message){
 
@@ -236,133 +371,272 @@ class MessangeBox {
         ctx.restore();
 
     }
-}
+    update(newMessage){
+        if (newMessage != undefined) {
+            this.message = newMessage;
+        }
 
+    }
+}
+class Particle {
+
+    constructor(x, y, radius, velocity, color){
+
+        this.radius = radius;
+        this.color = color;
+
+        this.x = x;
+        this.y = y;
+
+        this.velocity = velocity;
+        this.alpha = 1;
+    }
+    draw(){
+        ctx.save();
+        canvas.globalAlpha = this.alpha;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.restore();
+    }
+    update(){
+        this.x = this.x + this.velocity.x;
+        this.y = this.y + this.velocity.y;
+        this.alpha -=  0.10 ;
+    }
+}
 function gameLoop() {
 
-    console.log("yo llegue gameLoop")
-    if(gameOver==false){
+    console.log("yo llegue gameLoop");
 
-        AnimationId = requestAnimationFrame(gameLoop);
+    if (gamePaused==true) {
+
+        cancelAnimationFrame(AnimationId)
+        oMessageBox = new MessageBox((canvas.width/2)-100, (canvas.height/2)-40, 300, 150, 'red', 'black','40px Courier', 'Game Paused!');
+        oMessageBox.draw("Game Paused !!!");
+        return;
+    }
+
+    if(!gameOver && !gamePaused){
+
+
+        if(!steppedGame)requestAnimationFrame(laggedRequestAnimationFrame)
+
         update();
-        paint();
+        draw();
 
     } else {
-        
-        message = new MessangeBox(innerWidth/4, innerHeight/4, 300, 150, 'red', 'black','40px Courier', 'Game Over!');
-        message.draw();
-    
-        // // Finish the game
-        cancelAnimationFrame(AnimationId)
-        // ctx.font="30px Arial";
-        // ctx.textAlign = "center";
-        // ctx.fillStyle = "red";
-        // ctx.fillText("Game Over!!!", canvas.width/2, canvas.height/2 );
+
+        setGameOver();
     }
 
 }
-function paint(){
+function draw() {
 
-    // for (let index = 0; index < innerWidth; index += 50) {
+    // for (let index = 0; index < canvas.width; index += 50) {
     // {
             // Clear the canvas
             ctx.clearRect(0,0, canvas.width, canvas.height);
-            laVenenosa.draw();
-            timeBox.draw();
-            vitamina.draw();
-          
-            // // Draw canvas background
-            // ctx.fillStyle = 'rgb(0, 0, 0, 0.3)';
-            // ctx.fillRect(0,0, canvas.width, canvas.height)
 
-            // // creating circles
-            // ctx.beginPath();
-            // ctx.fillStyle = 'white';
-            // ctx.arc(cirX, cirY, 40, 0, 2 * Math.PI);
-            // ctx.stroke();
-            // ctx.fillStyle = "green";
-            // ctx.fill();
-            // console.log( "x:" + index + "y" + index); 
-            // console.log( "width:" + innerWidth + "Height" + innerHeight); 
-
-        //     // creating rectangle
-        //     ctx.beginPath();
-        //     ctx.rect(innerWidth-index, index, 200, 100);
-        //     ctx.stroke();
-        //     ctx.fillStyle = "red";
-        //     ctx.fill();
-
-        //     //console.log( "width:" + innerWidth + "Height" + innerHeight);
+            oSnake.draw();
+            oDashboard.draw();
+            oGameTitle.draw(); 
+            oTimeBox.draw();
+            oScoreBox.draw();
+            oVitamin.draw();
             
 
-        //     ctx.font="60px time new roma";
-        //     ctx.fillStyle = "yellow";
-        //     ctx.textAlign = "center";
-        //     ctx.fillText("Melissa", canvas.width/2, index);
-        // }
-        // // gameOver = true;
-    // }
-    
-    // if (gameOver) {  
-    //     console.log("gameOver: " + gameOver);  
-    //     cancelAnimationFrame(AnimationId);
-    // }
 }
 function update() {
 
-    cirX += cirSpeed;
-    cirY += cirSpeed;
+    // console.log("update.enter")
 
-    //enemigos off the screen?
-    if (cirX > canvas.height) {
-        cirSpeed = cirSpeed * -1;
-    } else if (cirX < 0) {
-        cirSpeed = cirSpeed * -1;
-    }
-}
-function MovePlayerPaddle(key) {  
-    
-    if (running === false){
-        running = true;
-        AnimationId = window.requestAnimationFrame(gameLoop);
-    }
+    oSnake.update();
+    oScoreBox.update()
+    oTimeBox.update(getTime());
 
-    // handle scape as game over
-    if(key.keyCode === 27) gameOver = true;
 
-    // Handle space bar for PAUSE
-    if(key.keyCode === 32) {
-        running = false;
-    }
+    // if player tries to move off the board prevent that (LE: No need for this game)
+    if(oSnake.y < dashboardHeight || oSnake.y > canvas.height-20){
+        gameOver = true;
 
-    // Handle up arrow and w input
-    if(key.keyCode === 38 || key.keyCode === 87){
-        laVenenosa.update(0, -10)
-        laVenenosa.move = DIRECTION.UP;
+    } else if(oSnake.x < 0 || oSnake.x > (canvas.width-20)){
+        gameOver = true;
     }
-    
-    // Handle down arrow and s input
-    if(key.keyCode === 40 || key.keyCode === 83) {
-        laVenenosa.update (0, 10) 
-        laVenenosa.move = DIRECTION.DOWN;
-    }
-    // Handle left arrow and a input
-    if(key.keyCode === 37 || key.keyCode === 65) {
-        laVenenosa.update (-10, 0) 
-        laVenenosa.move = DIRECTION.LEFT;
-    }
-    
-    // Handle right arrow and d input
-    if(key.keyCode === 39 || key.keyCode === 68) {
-        laVenenosa.update (10, 0) 
-        laVenenosa.move = DIRECTION.RIGHT;
-    }
+    console.log("x-> " + oVitamin.x + ", " + oSnake.x + " y-> "  + oVitamin.y + ", " + oSnake.y);
+    console.log("Collided: " + recCollisionDectetion(oSnake, oVitamin));
 
-    update();
+    if(recCollisionDectetion(oSnake, oVitamin)) {
+        // console.log("Collision detected");
+        // if (!gamePaused) gameOver = true;
+        // setGameOver();
+
+        // circle explosion
+        splashIt(oVitamin, 'red');
+        oVitamin.move();
+        addScore();
+        oScoreBox = new MessageBox(canvas.width/2, 20, 160, 40, 'white', 'black', '20px Courier', "Score: 0" + score);
+        setTimeout(function(){ oSnake.grow(1);}, 1000/2);
+    }
 }
 function generateRandomColor()
 {
     var randomColor = '#'+Math.floor(Math.random()*16777215).toString(16);
     return randomColor;
     //random color will be freshly served
+}
+function MovePlayerPaddle(key){
+
+    if ((key.keyCode === 32)  && (running == true)){
+
+        // reset pause the game
+        gamePaused = !gamePaused;
+        // console.log("gamePaused: " + gamePaused);
+        gameLoop();
+        return;
+
+    } else if(running === false){
+
+        // game started
+        running = true;
+        gamePaused = false;
+        if (!steppedGame) requestAnimationFrame(laggedRequestAnimationFrame)
+        oSnake.move = DIRECTION.RIGHT; 
+    }
+
+    switch (true) {
+        
+        // Handle scape as game over
+        case (key.keyCode === 27):      
+            if (!gamePaused) gameOver = true;
+            break;
+
+        // Handle space bar for PAUSE
+        // case (key.keyCode === 32):
+        //     running = true;
+        //     break;
+
+        // Handle up arrow and w input
+        case (key.keyCode === 38 || key.keyCode === 87) && oSnake.move != DIRECTION.DOWN: 
+            oSnake.move = DIRECTION.UP;
+            //update();
+            break;
+
+        // Handle down arrow and s input
+        case (key.keyCode === 40 || key.keyCode === 83) && oSnake.move != DIRECTION.UP:
+            oSnake.move = DIRECTION.DOWN;
+            //update();
+            break;
+        
+        // Handle left arrow and a input
+        case (key.keyCode === 37 || key.keyCode === 65) && oSnake.move != DIRECTION.RIGHT:
+            oSnake.move = DIRECTION.LEFT;
+            //update();
+            break;
+
+        // Handle right arrow and d input
+        case (key.keyCode === 39 || key.keyCode === 68)  && oSnake.move != DIRECTION.LEFT:
+            oSnake.move = DIRECTION.RIGHT;
+            //update();
+            break;
+
+        default:
+            break;
+    }
+    // console.log("key.code: " + key.keyCode)
+    if(steppedGame) gameLoop();
+}
+function getTime(){
+
+    let clock = today.getHours().toString()   + ":" + 
+                today.getMinutes().toString() + ":" + 
+                today.getSeconds().toString();
+    
+                return clock;
+}
+
+var fps = 5 
+// Article reference: http://www.javascriptkit.com/javatutors/requestanimationframe.shtml
+function laggedRequestAnimationFrame(timestamp){
+    setTimeout(function(){ //throttle requestAnimationFrame to 20fps
+        AnimationId = requestAnimationFrame(gameLoop);
+    }, 1000/fps)
+}
+function drawApple(x, y){
+
+    // Image implementation (both work with not error by the image does not show)
+    const appleImg  = new Image();
+    appleImg.src = './asset/sprite_0.png'
+
+    var img = document.getElementById("source");
+
+    // console.log(x + ", " + y) 
+    //ctx.drawImage(appleImg, x, y);
+    ctx.drawImage(appleImg, 1, 1, 104, 124, x-14, y-7, 80, 80);
+        
+}
+function recCollisionDectetion(targetA, targetB) {
+    return !(targetB.x > (targetA.x + targetA.width) || 
+             (targetB.x + targetB.width) < targetA.x || 
+             targetB.y > (targetA.x + targetA.height) ||
+             (targetB.y + targetB.height) < targetA.y);
+}
+function circleCollisionDetection(circle1, circle2){
+
+    // Article reference: https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+
+    var dx = (circle1.x + circle1.radius) - (circle2.x + circle2.radius);
+    var dy = (circle1.y + circle1.radius) - (circle2.y + circle2.radius);
+    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < circle1.radius + circle2.radius) {
+        // collision detected!
+        // this.color = "green";
+        return true;
+    } else {
+        // no collision
+        // this.color = "blue";
+        return false;
+    }
+}
+// return true if the rectangle and circle are colliding
+function RectToCircleColliding(circle, rect){
+
+    // console.log("cicle: x-" + circle.x + " y-" + circle.y);
+
+    var distX = Math.abs(circle.x - rect.x-rect.w/2);
+    var distY = Math.abs(circle.y - rect.y-rect.h/2);
+
+    if (distX > (rect.w/2 + circle.r)) { return false; }
+    if (distY > (rect.h/2 + circle.r)) { return false; }
+
+    if (distX <= (rect.w/2)) { return true; } 
+    if (distY <= (rect.h/2)) { return true; }
+
+    var dx=distX-rect.w/2;
+    var dy=distY-rect.h/2;
+    return (dx*dx+dy*dy<=(circle.r*circle.r));
+}
+function setGameOver(){
+
+    // Finish the game
+    cancelAnimationFrame(AnimationId)
+        
+    oMessageBox = new MessageBox((canvas.width/2)-100, (canvas.height/2)-40, 200, 80, 'black', 'red', "20px Courier", "Game Over!!!");
+    oMessageBox.draw();
+    
+}
+function splashIt(target, color){
+
+    console.log("Boom - Enemy Splased!!!")
+
+    for (let index = 0; index < 8   ; index++) {
+        // particles.push(new Particle(target.x, target.y, 3, {x: Math.random()-0.5, y: Math.random()-0.5}, color))    
+        particles.push(new Particle(target.x, target.y, 3,   {x: Math.floor(Math.random())*10-5, y: Math.floor(Math.random())*10-5}, color))    
+    }
+    // console.log(particles)
+}
+function addScore(){
+    score += 5;
 }
