@@ -11,3 +11,17 @@ canvas {
     /* margin-left: 30px;
        margin-top: 30px; */
 }
+.father {
+     position:relative;
+}
+.child {
+    border: 8px outset gray;
+    background-color: white;
+    text-align: center;
+    height: 80px;
+    width: 35%;
+    position: relative;
+    position: absolute;
+    top: 35%;
+    left: 33%;
+  }
